@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Faculty Model
+model Faculty {
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  password      String
+  firstName     String
+  lastName      String
+  department    String?
+  specialization String?
+  phone         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  assignedPapers AnswerSheet[]
+
+  @@map("faculties")
+}
+
+// Student Model
+model Student {
+  id            Int             @id @default(autoincrement())
+  rollNumber    String          @unique
+  firstName     String
+  lastName      String
+  email         String          @unique
+  phone         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  answerSheets  AnswerSheet[]
+
+  @@map("students")
+}
+
+// Course Model
+model Course {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique
+  name          String
+  credits       Int
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  subjects      Subject[]
+
+  @@map("courses")
+}
+
+// Subject Model
+model Subject {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique
+  name          String
+  courseId      Int
+  maxMarks      Int             @default(50)
+  targetMarks   Int             @default(30)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  course        Course          @relation(fields: [courseId], references: [id])
+  exams         Exam[]
+  questions     Question[]
+
+  @@map("subjects")
+}
+
+// Exam Model
+model Exam {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique
+  name          String
+  subjectId     Int
+  date          DateTime
+  duration      Int             // in minutes
+  totalMarks    Int             @default(50)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  subject       Subject         @relation(fields: [subjectId], references: [id])
+  questions     Question[]
+  answerSheets  AnswerSheet[]
+
+  @@map("exams")
+}
+
+// Question Model
+model Question {
+  id            Int             @id @default(autoincrement())
+  examId        Int
+  subjectId     Int
+  questionNumber Int
+  maxMarks      Int
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  exam          Exam            @relation(fields: [examId], references: [id])
+  subject       Subject         @relation(fields: [subjectId], references: [id])
+  marks         Mark[]
+
+  @@map("questions")
+}
+
+// Answer Sheet Model
+model AnswerSheet {
+  id            Int             @id @default(autoincrement())
+  examId        Int
+  studentId     Int
+  facultyId     Int
+  studentAnswerSheetUrl String
+  answerKeyUrl  String
+  status        String          @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, COMPLETED
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  exam          Exam            @relation(fields: [examId], references: [id])
+  student       Student         @relation(fields: [studentId], references: [id])
+  faculty       Faculty         @relation(fields: [facultyId], references: [id])
+  evaluation    Evaluation?
+
+  @@map("answer_sheets")
+}
+
+// Evaluation Model
+model Evaluation {
+  id            Int             @id @default(autoincrement())
+  answerSheetId Int             @unique
+  status        String          @default("DRAFT") // DRAFT, SUBMITTED
+  totalObtainedMarks Float       @default(0)
+  totalConvertedMarks Float      @default(0)
+  remarks       String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  answerSheet   AnswerSheet     @relation(fields: [answerSheetId], references: [id], onDelete: Cascade)
+  marks         Mark[]
+
+  @@map("evaluations")
+}
+
+// Mark Model
+model Mark {
+  id            Int             @id @default(autoincrement())
+  evaluationId  Int
+  questionId    Int
+  obtainedMarks Float           @default(0)
+  convertedMarks Float          @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  evaluation    Evaluation      @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  question      Question        @relation(fields: [questionId], references: [id])
+
+  @@unique([evaluationId, questionId])
+  @@map("marks")
+}
