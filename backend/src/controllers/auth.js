@@ -74,6 +74,7 @@ export class AuthController {
         "Account created successfully",
       );
     } catch (error) {
+      console.error("Register failed:", error);
       if (error.code === "auth/email-already-exists") {
         return sendErrorResponse(
           res,

@@ -11,109 +11,111 @@ const facultyRepository = new FacultyRepository();
 export class AuthService {
   async register(email, password, displayName = "", role = "teacher") {
     const validRoles = ["admin", "teacher", "student"];
-
     if (!validRoles.includes(role)) {
-      throw {
-        statusCode: 400,
-        message: `Role must be one of: ${validRoles.join(", ")}`,
-      };
+      throw { statusCode: 400, message: `Role must be one of: ${validRoles.join(", ")}` };
     }
-
     const firebaseAuth = getAuth();
-    const userRecord = await firebaseAuth.createUser({
-      email,
-      password,
-      displayName: displayName || undefined,
-    });
-
+    const userRecord = await firebaseAuth.createUser({ email, password, displayName: displayName || undefined });
     await firebaseAuth.setCustomUserClaims(userRecord.uid, { role });
-
-    return {
-      uid: userRecord.uid,
-      email: userRecord.email,
-      displayName: userRecord.displayName,
-      role,
-    };
+    return { uid: userRecord.uid, email: userRecord.email, displayName: userRecord.displayName, role };
   }
 
   async login(email, password) {
     const faculty = await facultyRepository.findByEmail(email);
-
-    if (!faculty) {
-      throw {
-        statusCode: 401,
-        message: "Invalid email or password",
-      };
-    }
-
+    if (!faculty) throw { statusCode: 401, message: "Invalid email or password" };
     const isPasswordValid = await comparePassword(password, faculty.password);
-
-    if (!isPasswordValid) {
-      throw {
-        statusCode: 401,
-        message: "Invalid email or password",
-      };
-    }
-
-    const accessToken = generateAccessToken({
-      id: faculty.id,
-      email: faculty.email,
-      firstName: faculty.firstName,
-      lastName: faculty.lastName,
-    });
-
-    const refreshToken = generateRefreshToken({
-      id: faculty.id,
-    });
-
+    if (!isPasswordValid) throw { statusCode: 401, message: "Invalid email or password" };
+    const accessToken = generateAccessToken({ id: faculty.id, email: faculty.email, firstName: faculty.firstName, lastName: faculty.lastName });
+    const refreshToken = generateRefreshToken({ id: faculty.id });
     return {
       accessToken,
       refreshToken,
-      faculty: {
-        id: faculty.id,
-        email: faculty.email,
-        firstName: faculty.firstName,
-        lastName: faculty.lastName,
-        department: faculty.department,
-      },
+      faculty: { id: faculty.id, email: faculty.email, firstName: faculty.firstName, lastName: faculty.lastName, department: faculty.department },
     };
   }
 
   async refreshToken(refreshToken) {
     const decoded = this.verifyRefreshToken(refreshToken);
-
-    if (!decoded) {
-      throw {
-        statusCode: 401,
-        message: "Invalid refresh token",
-      };
-    }
-
+    if (!decoded) throw { statusCode: 401, message: "Invalid refresh token" };
     const faculty = await facultyRepository.findById(decoded.id);
-
-    if (!faculty) {
-      throw {
-        statusCode: 401,
-        message: "Faculty not found",
-      };
-    }
-
-    const newAccessToken = generateAccessToken({
-      id: faculty.id,
-      email: faculty.email,
-      firstName: faculty.firstName,
-      lastName: faculty.lastName,
-    });
-
-    return {
-      accessToken: newAccessToken,
-      refreshToken,
-    };
+    if (!faculty) throw { statusCode: 401, message: "Faculty not found" };
+    const newAccessToken = generateAccessToken({ id: faculty.id, email: faculty.email, firstName: faculty.firstName, lastName: faculty.lastName });
+    return { accessToken: newAccessToken, refreshToken };
   }
 
   verifyRefreshToken(token) {
-    // This would use jwt.verify from utils
     return null;
+  }
+}
+
+export class AdminService {
+  async addStudent(data) {
+    const { StudentRepository } = await import("../repositories/index.js");
+    const repo = new StudentRepository();
+    const existing = await repo.findByRollNumber(data.rollNumber);
+    if (existing) throw { statusCode: 409, message: "Student with this roll number already exists." };
+    return repo.create(data);
+  }
+
+  async updateStudent(id, data) {
+    const { StudentRepository } = await import("../repositories/index.js");
+    return new StudentRepository().update(id, data);
+  }
+
+  async deleteStudent(id) {
+    const { StudentRepository } = await import("../repositories/index.js");
+    return new StudentRepository().delete(id);
+  }
+
+  async listStudents(filters = {}) {
+    const { StudentRepository } = await import("../repositories/index.js");
+    return new StudentRepository().findMany(filters);
+  }
+
+  async getStudentFilters() {
+    const { StudentRepository } = await import("../repositories/index.js");
+    return new StudentRepository().getDistinctFilters();
+  }
+
+  async uploadSheet({ studentId, facultyId, examId, studentAnswerSheetUrl, answerKeyUrl }) {
+    const { AnswerSheetRepository, StudentRepository } = await import("../repositories/index.js");
+    const student = await new StudentRepository().findById(studentId);
+    if (!student) throw { statusCode: 404, message: "Student not found." };
+    return new AnswerSheetRepository().create({
+      studentId,
+      facultyId,
+      examId,
+      studentAnswerSheetUrl,
+      answerKeyUrl: answerKeyUrl || "",
+      status: "ASSIGNED",
+    });
+  }
+
+  async listExams() {
+    const prisma = (await import("../config/database.js")).default;
+    return prisma.exam.findMany({ include: { subject: true }, orderBy: { createdAt: "desc" } });
+  }
+
+  async listFaculty() {
+    const prisma = (await import("../config/database.js")).default;
+    return prisma.faculty.findMany({
+      select: { id: true, firstName: true, lastName: true, department: true, email: true },
+      orderBy: { firstName: "asc" },
+    });
+  }
+
+  async syncTeacherToFaculty({ email, displayName }) {
+    const prisma = (await import("../config/database.js")).default;
+    const existing = await prisma.faculty.findUnique({ where: { email } });
+    if (existing) return { alreadyExists: true, faculty: existing };
+    const parts = (displayName || '').trim().split(' ');
+    const firstName = parts[0] || email.split('@')[0];
+    const lastName  = parts.slice(1).join(' ') || '';
+    const faculty = await prisma.faculty.create({
+      data: { email, firstName, lastName, password: '' },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+    return { alreadyExists: false, faculty };
   }
 }
 
@@ -121,21 +123,10 @@ export class DashboardService {
   async getDashboardStats(facultyId) {
     const { AnswerSheetRepository } = await import("../repositories/index.js");
     const repo = new AnswerSheetRepository();
-
     const total = await repo.countByFacultyId(facultyId);
-    const completed = await repo.countByFacultyIdAndStatus(
-      facultyId,
-      "COMPLETED",
-    );
-    const assigned = await repo.countByFacultyIdAndStatus(
-      facultyId,
-      "ASSIGNED",
-    );
-    const inProgress = await repo.countByFacultyIdAndStatus(
-      facultyId,
-      "IN_PROGRESS",
-    );
-
+    const completed = await repo.countByFacultyIdAndStatus(facultyId, "COMPLETED");
+    const assigned = await repo.countByFacultyIdAndStatus(facultyId, "ASSIGNED");
+    const inProgress = await repo.countByFacultyIdAndStatus(facultyId, "IN_PROGRESS");
     return {
       totalPapers: total,
       completedPapers: completed,
@@ -147,19 +138,23 @@ export class DashboardService {
 }
 
 export class PapersService {
-  async getAssignedPapers(facultyId, skip = 0, take = 10) {
+  async getAssignedPapers(facultyId, skip = 0, take = 10, filters = {}) {
     const { AnswerSheetRepository } = await import("../repositories/index.js");
     const repo = new AnswerSheetRepository();
-
-    const papers = await repo.findByFacultyId(facultyId, skip, take);
-    const total = await repo.countByFacultyId(facultyId);
-
+    const [papers, total] = await Promise.all([
+      repo.findByFacultyId(facultyId, skip, take, filters),
+      repo.countByFacultyId(facultyId, filters),
+    ]);
     return {
       data: papers.map((paper) => ({
         id: paper.id,
         rollNumber: paper.student.rollNumber,
         studentName: `${paper.student.firstName} ${paper.student.lastName}`,
+        department: paper.student.department || "",
+        section: paper.student.section || "",
+        year: paper.student.year || "",
         subject: paper.exam.subject.name,
+        examName: paper.exam.name,
         status: paper.status,
         examCode: paper.exam.code,
         date: paper.exam.date,
@@ -170,13 +165,25 @@ export class PapersService {
     };
   }
 
+  async getPaperFilters(facultyId) {
+    const prisma = (await import("../config/database.js")).default;
+    const sheets = await prisma.answerSheet.findMany({
+      where: { facultyId },
+      select: { student: { select: { department: true, section: true, year: true } }, status: true },
+    });
+    return {
+      departments: [...new Set(sheets.map(s => s.student.department).filter(Boolean))].sort(),
+      sections:    [...new Set(sheets.map(s => s.student.section).filter(Boolean))].sort(),
+      years:       [...new Set(sheets.map(s => s.student.year).filter(Boolean))].sort(),
+      statuses:    [...new Set(sheets.map(s => s.status).filter(Boolean))].sort(),
+    };
+  }
+
   async getPaperDetails(paperId) {
     const { AnswerSheetRepository } = await import("../repositories/index.js");
     const repo = new AnswerSheetRepository();
     const paper = await repo.findById(paperId);
-    if (!paper) {
-      throw { statusCode: 404, message: "Paper not found" };
-    }
+    if (!paper) throw { statusCode: 404, message: "Paper not found" };
     return {
       id: paper.id,
       student: {
@@ -184,6 +191,9 @@ export class PapersService {
         firstName: paper.student.firstName,
         lastName: paper.student.lastName,
         email: paper.student.email,
+        department: paper.student.department,
+        section: paper.student.section,
+        year: paper.student.year,
       },
       exam: {
         id: paper.exam.id,
@@ -229,13 +239,13 @@ export class PapersService {
   async searchPapers(facultyId, query, skip = 0, take = 10) {
     const { AnswerSheetRepository } = await import("../repositories/index.js");
     const repo = new AnswerSheetRepository();
-
     const papers = await repo.searchByRollOrName(facultyId, query, skip, take);
-
     return papers.map((paper) => ({
       id: paper.id,
       rollNumber: paper.student.rollNumber,
       studentName: `${paper.student.firstName} ${paper.student.lastName}`,
+      department: paper.student.department || "",
+      section: paper.student.section || "",
       subject: paper.exam.subject.name,
       status: paper.status,
     }));
@@ -247,82 +257,44 @@ export class EvaluationService {
     const { EvaluationRepository } = await import("../repositories/index.js");
     const repo = new EvaluationRepository();
     const evaluation = await repo.findByAnswerSheetId(answersheetId);
-    if (!evaluation) {
-      throw { statusCode: 404, message: "Evaluation not found" };
-    }
+    if (!evaluation) throw { statusCode: 404, message: "Evaluation not found" };
     return evaluation;
   }
 
-  async saveEvaluationDraft(
-    answersheetId,
-    marks,
-    remarks = "",
-    targetMarks = 0,
-  ) {
-    const { AnswerSheetRepository, EvaluationRepository, MarkRepository } =
-      await import("../repositories/index.js");
+  async saveEvaluationDraft(answersheetId, marks, remarks = "", targetMarks = 0) {
+    const { AnswerSheetRepository, EvaluationRepository, MarkRepository } = await import("../repositories/index.js");
     const answerSheetRepo = new AnswerSheetRepository();
     const evaluationRepo = new EvaluationRepository();
     const markRepo = new MarkRepository();
     const { convertMarks } = await import("../utils/index.js");
 
     const answerSheet = await answerSheetRepo.findById(answersheetId);
-    if (!answerSheet) {
-      throw { statusCode: 404, message: "Answer sheet not found" };
-    }
+    if (!answerSheet) throw { statusCode: 404, message: "Answer sheet not found" };
 
     let evaluation = await evaluationRepo.findByAnswerSheetId(answersheetId);
     if (!evaluation) {
-      evaluation = await evaluationRepo.create({
-        answerSheetId: answersheetId,
-        status: "DRAFT",
-      });
+      evaluation = await evaluationRepo.create({ answerSheetId: answersheetId, status: "DRAFT" });
     }
 
     let totalObtained = 0;
     const maxMarksTotal = answerSheet.exam.totalMarks;
 
     for (const mark of marks) {
-      const question = answerSheet.exam.questions.find(
-        (q) => q.id === mark.questionId,
-      );
-      if (!question)
-        throw {
-          statusCode: 400,
-          message: `Question ${mark.questionId} not found`,
-        };
-      if (mark.obtainedMarks > question.maxMarks)
-        throw {
-          statusCode: 400,
-          message: `Marks for Q${question.questionNumber} cannot exceed ${question.maxMarks}`,
-        };
-      if (mark.obtainedMarks < 0)
-        throw {
-          statusCode: 400,
-          message: `Marks for Q${question.questionNumber} cannot be negative`,
-        };
-
-      await markRepo.upsertMark(
-        evaluation.id,
-        mark.questionId,
-        mark.obtainedMarks,
-        0,
-      );
+      const question = answerSheet.exam.questions.find((q) => q.id === mark.questionId);
+      if (!question) throw { statusCode: 400, message: `Question ${mark.questionId} not found` };
+      if (mark.obtainedMarks > question.maxMarks) throw { statusCode: 400, message: `Marks for Q${question.questionNumber} cannot exceed ${question.maxMarks}` };
+      if (mark.obtainedMarks < 0) throw { statusCode: 400, message: `Marks for Q${question.questionNumber} cannot be negative` };
+      await markRepo.upsertMark(evaluation.id, mark.questionId, mark.obtainedMarks, 0);
       totalObtained += mark.obtainedMarks;
     }
 
-    const totalConverted =
-      targetMarks > 0
-        ? convertMarks(totalObtained, maxMarksTotal, targetMarks)
-        : 0;
-
+    const totalConverted = targetMarks > 0 ? convertMarks(totalObtained, maxMarksTotal, targetMarks) : 0;
     await evaluationRepo.update(evaluation.id, {
       totalObtainedMarks: totalObtained,
       totalConvertedMarks: Math.round(totalConverted * 100) / 100,
       targetMarks: targetMarks || 0,
       remarks,
     });
-
     await answerSheetRepo.updateStatus(answersheetId, "IN_PROGRESS");
 
     return {
@@ -335,22 +307,13 @@ export class EvaluationService {
   }
 
   async submitEvaluation(answersheetId, marks, remarks = "", targetMarks = 0) {
-    const { AnswerSheetRepository, EvaluationRepository } =
-      await import("../repositories/index.js");
+    const { AnswerSheetRepository, EvaluationRepository } = await import("../repositories/index.js");
     const answerSheetRepo = new AnswerSheetRepository();
     const evaluationRepo = new EvaluationRepository();
-
-    const result = await this.saveEvaluationDraft(
-      answersheetId,
-      marks,
-      remarks,
-      targetMarks,
-    );
+    const result = await this.saveEvaluationDraft(answersheetId, marks, remarks, targetMarks);
     const evaluation = await evaluationRepo.findByAnswerSheetId(answersheetId);
-
     await evaluationRepo.update(evaluation.id, { status: "SUBMITTED" });
     await answerSheetRepo.updateStatus(answersheetId, "COMPLETED");
-
     return result;
   }
 }

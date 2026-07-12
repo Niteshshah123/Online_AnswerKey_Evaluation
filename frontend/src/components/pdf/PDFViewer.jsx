@@ -5,7 +5,10 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw } from 'lucide-rea
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'react-pdf/dist/pdf.worker.entry.js',
+  import.meta.url,
+).href;
 
 export default function PDFViewer({ url }) {
   const apiBase = API_URL.replace(/\/api$/, '');

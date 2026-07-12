@@ -37,6 +37,10 @@ model Student {
   lastName      String
   email         String          @unique
   phone         String?
+  department    String?
+  section       String?
+  year          String?
+  semester      String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 

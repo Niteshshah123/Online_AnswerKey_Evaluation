@@ -63,7 +63,10 @@ export default function Register() {
       setSuccess('Account created. Please sign in from the login page.');
       navigate('/login');
     } catch (err) {
-      const message = err.response?.data?.message || 'Unable to create account. Please try again.';
+      const validationErrors = err.response?.data?.errors;
+      const message = validationErrors?.length
+        ? validationErrors.map((item) => item.message).join(' ')
+        : err.response?.data?.message || 'Unable to create account. Please try again.';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -204,6 +207,10 @@ export default function Register() {
                 {isLoading ? 'Creating account...' : `Create ${activeRole.label} account`}
               </button>
             </form>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+              Password must be at least 6 characters. Display name is optional.
+            </p>
 
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
               Already have an account? <Link to="/login" className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Go to login</Link>

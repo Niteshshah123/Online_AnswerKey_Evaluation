@@ -13,4 +13,7 @@ export default defineConfig({
     sourcemap: false,
     minify: 'terser',
   },
+  optimizeDeps: {
+    exclude: ['pdfjs-dist'],
+  },
 });

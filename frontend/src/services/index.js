@@ -34,9 +34,14 @@ export const dashboardService = {
 };
 
 export const papersService = {
-  getAssignedPapers: async (page = 1, pageSize = 10) => {
-    const response = await apiClient.get("/papers", {
-      params: { page, pageSize },
+  getPaperFilters: async () => {
+    const response = await apiClient.get('/papers/filters');
+    return response.data;
+  },
+
+  getAssignedPapers: async (page = 1, pageSize = 10, filters = {}) => {
+    const response = await apiClient.get('/papers', {
+      params: { page, pageSize, ...filters },
     });
     return response.data;
   },
@@ -78,30 +83,26 @@ export const evaluationService = {
 };
 
 export const adminService = {
-  listUsers: async () => {
-    const response = await apiClient.get("/admin/users");
-    return response.data;
-  },
+  // Firebase users
+  listUsers: async () => (await apiClient.get('/admin/users')).data,
+  createUser: async (email, password, displayName, role) =>
+    (await apiClient.post('/admin/users', { email, password, displayName, role })).data,
+  setUserRole: async (uid, role) =>
+    (await apiClient.patch(`/admin/users/${uid}/role`, { role })).data,
+  deleteUser: async (uid) => (await apiClient.delete(`/admin/users/${uid}`)).data,
 
-  createUser: async (email, password, displayName, role) => {
-    const response = await apiClient.post("/admin/users", {
-      email,
-      password,
-      displayName,
-      role,
-    });
-    return response.data;
-  },
+  // Students
+  listStudents: async (params = {}) => (await apiClient.get('/admin/students', { params })).data,
+  getStudentFilters: async () => (await apiClient.get('/admin/students/filters')).data,
+  createStudent: async (data) => (await apiClient.post('/admin/students', data)).data,
+  updateStudent: async (id, data) => (await apiClient.patch(`/admin/students/${id}`, data)).data,
+  deleteStudent: async (id) => (await apiClient.delete(`/admin/students/${id}`)).data,
 
-  setUserRole: async (uid, role) => {
-    const response = await apiClient.patch(`/admin/users/${uid}/role`, {
-      role,
-    });
-    return response.data;
-  },
-
-  deleteUser: async (uid) => {
-    const response = await apiClient.delete(`/admin/users/${uid}`);
-    return response.data;
-  },
+  // Sheet upload
+  listExams: async () => (await apiClient.get('/admin/exams')).data,
+  listFaculty: async () => (await apiClient.get('/admin/faculty')).data,
+  syncTeacher: async (email, displayName) =>
+    (await apiClient.post('/admin/faculty/sync', { email, displayName })).data,
+  uploadSheet: async (formData) =>
+    (await apiClient.post('/admin/upload-sheet', formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data,
 };

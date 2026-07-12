@@ -25,7 +25,7 @@ export const registerValidator = (data) => {
       "string.min": "Password must be at least 6 characters",
       "any.required": "Password is required",
     }),
-    displayName: Joi.string().trim().min(2).max(60).allow("").optional(),
+    displayName: Joi.string().trim().min(2).max(60).empty("").optional(),
     role: Joi.string()
       .valid("admin", "teacher", "student")
       .required()
