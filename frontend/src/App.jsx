@@ -33,7 +33,7 @@ function AppLayout() {
     if (loading) return;
     const isProtected = ALL_PROTECTED.some((r) => location.pathname.startsWith(r));
     if (!user && isProtected) { navigate('/login'); return; }
-    if (user && location.pathname === '/login') {
+    if (user && (location.pathname === '/login' || location.pathname === '/register')) {
       navigate(role === 'admin' ? '/admin/dashboard' : role === 'student' ? '/student/dashboard' : '/dashboard');
     }
   }, [user, role, loading, location.pathname]);

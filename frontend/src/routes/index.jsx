@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import App from '../App.jsx';
 import Login from '../pages/Login.jsx';
+import Register from '../pages/Register.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
 import Papers from '../pages/Papers.jsx';
 import Evaluation from '../pages/Evaluation.jsx';
@@ -22,6 +23,10 @@ export const router = createBrowserRouter([
       {
         path: '/login',
         element: <Login />,
+      },
+      {
+        path: '/register',
+        element: <Register />,
       },
 
       // Teacher routes

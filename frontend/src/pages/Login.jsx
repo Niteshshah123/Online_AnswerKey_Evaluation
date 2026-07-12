@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { Link } from 'react-router-dom';
 import {
   Mail, Lock, Loader, GraduationCap, Sun, Moon, AlertCircle,
   ShieldCheck, BookOpen, UserCircle,
@@ -150,6 +151,9 @@ export default function Login() {
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-6">
           Role is determined by your account permissions.
+        </p>
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
+          Need an account? <Link to="/register" className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Create one here</Link>
         </p>
       </div>
     </div>
