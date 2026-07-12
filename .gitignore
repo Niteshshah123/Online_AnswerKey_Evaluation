@@ -9,6 +9,14 @@ pnpm-lock.yaml
 .env.local
 .env.*.local
 
+# Secrets / credentials
+**/serviceAccountKey.json
+**/firebase-service-account.json
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+
 # IDE
 .vscode/
 .idea/
@@ -21,6 +29,12 @@ pnpm-lock.yaml
 dist/
 build/
 .next/
+
+# Project-specific generated assets
+backend/logs/
+backend/uploads/
+backend/public/pdfs/
+frontend/dist/
 
 # Logs
 logs/

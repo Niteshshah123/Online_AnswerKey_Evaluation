@@ -1,41 +1,51 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { useAuthStore } from './store/auth.js';
 import Navbar from './components/layout/Navbar.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import './styles/index.css';
 
-function App() {
+const TEACHER_ROUTES  = ['/dashboard', '/papers', '/evaluation', '/answer-keys'];
+const ADMIN_ROUTES    = ['/admin'];
+const STUDENT_ROUTES  = ['/student'];
+const ALL_PROTECTED   = [...TEACHER_ROUTES, ...ADMIN_ROUTES, ...STUDENT_ROUTES];
+
+// Bridges Firebase AuthContext → useAuthStore for legacy components
+function AuthSync() {
+  const { user, role, loading } = useAuth();
+  const { setAuth, setLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (loading) { setLoading(true); return; }
+    setAuth(user ? { ...user, displayName: user.displayName, email: user.email } : null, role);
+  }, [user, role, loading]);
+
+  return null;
+}
+
+function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, initializeAuth } = useAuthStore();
+  const { user, role, loading } = useAuth();
 
   useEffect(() => {
-    initializeAuth();
-  }, []);
-
-  // Redirect to login if not authenticated and trying to access protected routes
-  useEffect(() => {
-    const protectedRoutes = ['/dashboard', '/papers', '/evaluation'];
-    const isProtectedRoute = protectedRoutes.some((route) => location.pathname.startsWith(route));
-
-    if (!isAuthenticated && isProtectedRoute) {
-      navigate('/login');
+    if (loading) return;
+    const isProtected = ALL_PROTECTED.some((r) => location.pathname.startsWith(r));
+    if (!user && isProtected) { navigate('/login'); return; }
+    if (user && location.pathname === '/login') {
+      navigate(role === 'admin' ? '/admin/dashboard' : role === 'student' ? '/student/dashboard' : '/dashboard');
     }
+  }, [user, role, loading, location.pathname]);
 
-    if (isAuthenticated && location.pathname === '/login') {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, location.pathname, navigate]);
-
-  const showLayout = isAuthenticated && location.pathname !== '/login';
+  const showLayout = !!user && location.pathname !== '/login';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {showLayout ? (
-        <div className="flex h-screen">
+        <div className="flex h-full">
           <Sidebar />
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col flex-1 min-w-0">
             <Navbar />
             <main className="flex-1 overflow-auto">
               <Outlet />
@@ -43,11 +53,18 @@ function App() {
           </div>
         </div>
       ) : (
-        <main>
-          <Outlet />
-        </main>
+        <Outlet />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthSync />
+      <AppLayout />
+    </AuthProvider>
   );
 }
 

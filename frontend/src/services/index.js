@@ -50,19 +50,35 @@ export const evaluationService = {
     return response.data;
   },
 
-  saveDraft: async (answerSheetId, marks, remarks) => {
-    const response = await apiClient.post(`/evaluations/${answerSheetId}/draft`, {
-      marks,
-      remarks,
-    });
+  saveDraft: async (answerSheetId, marks, remarks, targetMarks) => {
+    const response = await apiClient.post(`/evaluations/${answerSheetId}/draft`, { marks, remarks, targetMarks });
     return response.data;
   },
 
-  submitEvaluation: async (answerSheetId, marks, remarks) => {
-    const response = await apiClient.post(`/evaluations/${answerSheetId}/submit`, {
-      marks,
-      remarks,
-    });
+  submitEvaluation: async (answerSheetId, marks, remarks, targetMarks) => {
+    const response = await apiClient.post(`/evaluations/${answerSheetId}/submit`, { marks, remarks, targetMarks });
+    return response.data;
+  },
+};
+
+export const adminService = {
+  listUsers: async () => {
+    const response = await apiClient.get('/admin/users');
+    return response.data;
+  },
+
+  createUser: async (email, password, displayName, role) => {
+    const response = await apiClient.post('/admin/users', { email, password, displayName, role });
+    return response.data;
+  },
+
+  setUserRole: async (uid, role) => {
+    const response = await apiClient.patch(`/admin/users/${uid}/role`, { role });
+    return response.data;
+  },
+
+  deleteUser: async (uid) => {
+    const response = await apiClient.delete(`/admin/users/${uid}`);
     return response.data;
   },
 };

@@ -9,9 +9,7 @@ export class EvaluationController {
   async getEvaluation(req, res) {
     try {
       const { answerSheetId } = req.params;
-
-      const evaluation = await evaluationService.getEvaluation(parseInt(answerSheetId));
-
+      const evaluation = await evaluationService.getEvaluation(answerSheetId);
       sendResponse(res, HTTP_STATUS.OK, evaluation, 'Evaluation retrieved successfully');
     } catch (error) {
       if (error.statusCode) {
@@ -25,16 +23,17 @@ export class EvaluationController {
   async saveDraft(req, res) {
     try {
       const { answerSheetId } = req.params;
-      const { marks, remarks } = req.body;
+      const { marks, remarks, targetMarks } = req.body;
 
       if (!marks || !Array.isArray(marks)) {
         return sendErrorResponse(res, HTTP_STATUS.BAD_REQUEST, 'Marks array required');
       }
 
       const result = await evaluationService.saveEvaluationDraft(
-        parseInt(answerSheetId),
+        answerSheetId,
         marks,
         remarks || '',
+        targetMarks || 0,
       );
 
       sendResponse(res, HTTP_STATUS.OK, result, SUCCESS_MESSAGES.DRAFT_SAVED);
@@ -50,7 +49,7 @@ export class EvaluationController {
   async submitEvaluation(req, res) {
     try {
       const { answerSheetId } = req.params;
-      const { marks, remarks } = req.body;
+      const { marks, remarks, targetMarks } = req.body;
 
       const { error } = submitEvaluationValidator({ marks });
 
@@ -63,9 +62,10 @@ export class EvaluationController {
       }
 
       const result = await evaluationService.submitEvaluation(
-        parseInt(answerSheetId),
+        answerSheetId,
         marks,
         remarks || '',
+        targetMarks || 0,
       );
 
       sendResponse(res, HTTP_STATUS.OK, result, SUCCESS_MESSAGES.SUBMISSION_SUCCESS);

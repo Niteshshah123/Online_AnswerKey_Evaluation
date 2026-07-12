@@ -132,16 +132,10 @@ export class PapersService {
   async getPaperDetails(paperId) {
     const { AnswerSheetRepository } = await import('../repositories/index.js');
     const repo = new AnswerSheetRepository();
-
     const paper = await repo.findById(paperId);
-
     if (!paper) {
-      throw {
-        statusCode: 404,
-        message: 'Paper not found',
-      };
+      throw { statusCode: 404, message: 'Paper not found' };
     }
-
     return {
       id: paper.id,
       student: {
@@ -151,11 +145,13 @@ export class PapersService {
         email: paper.student.email,
       },
       exam: {
+        id: paper.exam.id,
         code: paper.exam.code,
         name: paper.exam.name,
         totalMarks: paper.exam.totalMarks,
         duration: paper.exam.duration,
         date: paper.exam.date,
+        answerKeyUrl: paper.exam.answerKeyUrl,
       },
       subject: {
         code: paper.exam.subject.code,
@@ -164,7 +160,7 @@ export class PapersService {
         targetMarks: paper.exam.subject.targetMarks,
       },
       answerSheetUrl: paper.studentAnswerSheetUrl,
-      answerKeyUrl: paper.answerKeyUrl,
+      answerKeyUrl: paper.exam.answerKeyUrl || paper.answerKeyUrl,
       status: paper.status,
       questions: paper.exam.questions.map((q) => ({
         id: q.id,
@@ -176,6 +172,7 @@ export class PapersService {
         status: paper.evaluation.status,
         totalObtainedMarks: paper.evaluation.totalObtainedMarks,
         totalConvertedMarks: paper.evaluation.totalConvertedMarks,
+        targetMarks: paper.evaluation.targetMarks,
         remarks: paper.evaluation.remarks,
         marks: paper.evaluation.marks.map((m) => ({
           questionId: m.questionId,
@@ -206,20 +203,14 @@ export class EvaluationService {
   async getEvaluation(answersheetId) {
     const { EvaluationRepository } = await import('../repositories/index.js');
     const repo = new EvaluationRepository();
-
     const evaluation = await repo.findByAnswerSheetId(answersheetId);
-
     if (!evaluation) {
-      throw {
-        statusCode: 404,
-        message: 'Evaluation not found',
-      };
+      throw { statusCode: 404, message: 'Evaluation not found' };
     }
-
     return evaluation;
   }
 
-  async saveEvaluationDraft(answersheetId, marks, remarks = '') {
+  async saveEvaluationDraft(answersheetId, marks, remarks = '', targetMarks = 0) {
     const { AnswerSheetRepository, EvaluationRepository, MarkRepository } = await import('../repositories/index.js');
     const answerSheetRepo = new AnswerSheetRepository();
     const evaluationRepo = new EvaluationRepository();
@@ -227,65 +218,36 @@ export class EvaluationService {
     const { convertMarks } = await import('../utils/index.js');
 
     const answerSheet = await answerSheetRepo.findById(answersheetId);
-
     if (!answerSheet) {
-      throw {
-        statusCode: 404,
-        message: 'Answer sheet not found',
-      };
+      throw { statusCode: 404, message: 'Answer sheet not found' };
     }
 
     let evaluation = await evaluationRepo.findByAnswerSheetId(answersheetId);
-
     if (!evaluation) {
-      evaluation = await evaluationRepo.create({
-        answerSheetId,
-        status: 'DRAFT',
-      });
+      evaluation = await evaluationRepo.create({ answerSheetId: answersheetId, status: 'DRAFT' });
     }
 
     let totalObtained = 0;
-    let totalConverted = 0;
+    const maxMarksTotal = answerSheet.exam.totalMarks;
 
     for (const mark of marks) {
       const question = answerSheet.exam.questions.find((q) => q.id === mark.questionId);
+      if (!question) throw { statusCode: 400, message: `Question ${mark.questionId} not found` };
+      if (mark.obtainedMarks > question.maxMarks) throw { statusCode: 400, message: `Marks for Q${question.questionNumber} cannot exceed ${question.maxMarks}` };
+      if (mark.obtainedMarks < 0) throw { statusCode: 400, message: `Marks for Q${question.questionNumber} cannot be negative` };
 
-      if (!question) {
-        throw {
-          statusCode: 400,
-          message: `Question ${mark.questionId} not found`,
-        };
-      }
-
-      if (mark.obtainedMarks > question.maxMarks) {
-        throw {
-          statusCode: 400,
-          message: `Marks for question ${question.questionNumber} cannot exceed ${question.maxMarks}`,
-        };
-      }
-
-      if (mark.obtainedMarks < 0) {
-        throw {
-          statusCode: 400,
-          message: `Marks for question ${question.questionNumber} cannot be negative`,
-        };
-      }
-
-      const converted = convertMarks(
-        mark.obtainedMarks,
-        answerSheet.exam.subject.maxMarks,
-        answerSheet.exam.subject.targetMarks,
-      );
-
-      await markRepo.upsertMark(evaluation.id, mark.questionId, mark.obtainedMarks, converted);
-
+      await markRepo.upsertMark(evaluation.id, mark.questionId, mark.obtainedMarks, 0);
       totalObtained += mark.obtainedMarks;
-      totalConverted += converted;
     }
+
+    const totalConverted = targetMarks > 0
+      ? convertMarks(totalObtained, maxMarksTotal, targetMarks)
+      : 0;
 
     await evaluationRepo.update(evaluation.id, {
       totalObtainedMarks: totalObtained,
       totalConvertedMarks: Math.round(totalConverted * 100) / 100,
+      targetMarks: targetMarks || 0,
       remarks,
     });
 
@@ -295,25 +257,20 @@ export class EvaluationService {
       id: evaluation.id,
       totalObtainedMarks: totalObtained,
       totalConvertedMarks: Math.round(totalConverted * 100) / 100,
+      targetMarks: targetMarks || 0,
+      maxMarks: maxMarksTotal,
     };
   }
 
-  async submitEvaluation(answersheetId, marks, remarks = '') {
+  async submitEvaluation(answersheetId, marks, remarks = '', targetMarks = 0) {
     const { AnswerSheetRepository, EvaluationRepository } = await import('../repositories/index.js');
     const answerSheetRepo = new AnswerSheetRepository();
     const evaluationRepo = new EvaluationRepository();
 
-    // First save as draft to validate
-    const result = await this.saveEvaluationDraft(answersheetId, marks, remarks);
-
+    const result = await this.saveEvaluationDraft(answersheetId, marks, remarks, targetMarks);
     const evaluation = await evaluationRepo.findByAnswerSheetId(answersheetId);
 
-    // Update status to SUBMITTED
-    await evaluationRepo.update(evaluation.id, {
-      status: 'SUBMITTED',
-    });
-
-    // Update answer sheet status
+    await evaluationRepo.update(evaluation.id, { status: 'SUBMITTED' });
     await answerSheetRepo.updateStatus(answersheetId, 'COMPLETED');
 
     return result;

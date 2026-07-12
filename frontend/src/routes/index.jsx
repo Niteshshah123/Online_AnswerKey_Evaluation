@@ -4,14 +4,11 @@ import Login from '../pages/Login.jsx';
 import Dashboard from '../pages/Dashboard.jsx';
 import Papers from '../pages/Papers.jsx';
 import Evaluation from '../pages/Evaluation.jsx';
+import AnswerKeys from '../pages/AnswerKeys.jsx';
 import NotFound from '../pages/NotFound.jsx';
+import AdminDashboard from '../pages/admin/AdminDashboard.jsx';
+import StudentDashboard from '../pages/student/StudentDashboard.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
-import { useAuthStore } from '../store/auth.js';
-
-const RootRedirect = () => {
-  const { isAuthenticated } = useAuthStore();
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
-};
 
 export const router = createBrowserRouter([
   {
@@ -20,29 +17,42 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <RootRedirect />,
+        element: <Navigate to="/login" replace />,
       },
       {
         path: '/login',
         element: <Login />,
       },
+
+      // Teacher routes
       {
-        element: <ProtectedRoute />,
+        element: <ProtectedRoute allowedRoles={['teacher']} />,
         children: [
-          {
-            path: '/dashboard',
-            element: <Dashboard />,
-          },
-          {
-            path: '/papers',
-            element: <Papers />,
-          },
-          {
-            path: '/evaluation/:answerSheetId',
-            element: <Evaluation />,
-          },
+          { path: '/dashboard',                      element: <Dashboard /> },
+          { path: '/papers',                         element: <Papers /> },
+          { path: '/evaluation/:answerSheetId',      element: <Evaluation /> },
+          { path: '/answer-keys',                    element: <AnswerKeys /> },
         ],
       },
+
+      // Admin routes
+      {
+        element: <ProtectedRoute allowedRoles={['admin']} />,
+        children: [
+          { path: '/admin/dashboard', element: <AdminDashboard /> },
+          // Add more admin pages here as you build them
+        ],
+      },
+
+      // Student routes
+      {
+        element: <ProtectedRoute allowedRoles={['student']} />,
+        children: [
+          { path: '/student/dashboard', element: <StudentDashboard /> },
+          // Add more student pages here as you build them
+        ],
+      },
+
       {
         path: '*',
         element: <NotFound />,
