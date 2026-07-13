@@ -6,13 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 // Faculty Model
 model Faculty {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
   email         String          @unique
   password      String
   firstName     String
@@ -31,7 +31,7 @@ model Faculty {
 
 // Student Model
 model Student {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
   rollNumber    String          @unique
   firstName     String
   lastName      String
@@ -48,7 +48,7 @@ model Student {
 
 // Course Model
 model Course {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
   code          String          @unique
   name          String
   credits       Int
@@ -64,10 +64,10 @@ model Course {
 
 // Subject Model
 model Subject {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
   code          String          @unique
   name          String
-  courseId      Int
+  courseId      String          @db.ObjectId
   maxMarks      Int             @default(50)
   targetMarks   Int             @default(30)
   createdAt     DateTime        @default(now())
@@ -83,13 +83,14 @@ model Subject {
 
 // Exam Model
 model Exam {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
   code          String          @unique
   name          String
-  subjectId     Int
+  subjectId     String          @db.ObjectId
   date          DateTime
-  duration      Int             // in minutes
+  duration      Int
   totalMarks    Int             @default(50)
+  answerKeyUrl  String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -103,9 +104,9 @@ model Exam {
 
 // Question Model
 model Question {
-  id            Int             @id @default(autoincrement())
-  examId        Int
-  subjectId     Int
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  examId        String          @db.ObjectId
+  subjectId     String          @db.ObjectId
   questionNumber Int
   maxMarks      Int
   createdAt     DateTime        @default(now())
@@ -121,13 +122,13 @@ model Question {
 
 // Answer Sheet Model
 model AnswerSheet {
-  id            Int             @id @default(autoincrement())
-  examId        Int
-  studentId     Int
-  facultyId     Int
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  examId        String          @db.ObjectId
+  studentId     String          @db.ObjectId
+  facultyId     String          @db.ObjectId
   studentAnswerSheetUrl String
   answerKeyUrl  String
-  status        String          @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, COMPLETED
+  status        String          @default("ASSIGNED")
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -142,17 +143,18 @@ model AnswerSheet {
 
 // Evaluation Model
 model Evaluation {
-  id            Int             @id @default(autoincrement())
-  answerSheetId Int             @unique
-  status        String          @default("DRAFT") // DRAFT, SUBMITTED
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  answerSheetId String          @unique @db.ObjectId
+  status        String          @default("DRAFT")
   totalObtainedMarks Float       @default(0)
   totalConvertedMarks Float      @default(0)
+  targetMarks   Int             @default(0)
   remarks       String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
   // Relations
-  answerSheet   AnswerSheet     @relation(fields: [answerSheetId], references: [id], onDelete: Cascade)
+  answerSheet   AnswerSheet     @relation(fields: [answerSheetId], references: [id])
   marks         Mark[]
 
   @@map("evaluations")
@@ -160,16 +162,16 @@ model Evaluation {
 
 // Mark Model
 model Mark {
-  id            Int             @id @default(autoincrement())
-  evaluationId  Int
-  questionId    Int
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  evaluationId  String          @db.ObjectId
+  questionId    String          @db.ObjectId
   obtainedMarks Float           @default(0)
   convertedMarks Float          @default(0)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
   // Relations
-  evaluation    Evaluation      @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  evaluation    Evaluation      @relation(fields: [evaluationId], references: [id])
   question      Question        @relation(fields: [questionId], references: [id])
 
   @@unique([evaluationId, questionId])

@@ -10,6 +10,9 @@ import authRoutes from './routes/auth.js';
 import dashboardRoutes from './routes/dashboard.js';
 import papersRoutes from './routes/papers.js';
 import evaluationRoutes from './routes/evaluation.js';
+import answerKeyRoutes from './routes/answerKey.js';
+import adminRoutes from './routes/admin.js';
+import { getFirebaseAdmin } from './config/firebase.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -39,6 +42,10 @@ app.use(morgan('combined', {
 app.use('/pdfs', express.static(path.join(__dirname, '..', 'public', 'pdfs')));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Initialize Firebase Admin
+try { getFirebaseAdmin(); logger.info('Firebase Admin initialized'); }
+catch (e) { logger.warn(`Firebase Admin not initialized: ${e.message}`); }
+
 // Health Check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
@@ -49,6 +56,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/papers', papersRoutes);
 app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/answer-keys', answerKeyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Handler
 app.use((req, res) => {

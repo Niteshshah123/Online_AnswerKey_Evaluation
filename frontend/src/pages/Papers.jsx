@@ -1,168 +1,144 @@
 import React, { useEffect, useState } from 'react';
 import { usePapersStore } from '../store/papers.js';
 import { Link } from 'react-router-dom';
-import { Search, Loader } from 'lucide-react';
-import { getStatusColor, getStatusText } from '../utils/index.js';
+import { Search, Loader, ClipboardList, ChevronLeft, ChevronRight, X } from 'lucide-react';
+
+const STATUS = {
+  ASSIGNED:    { label: 'Assigned',    cls: 'badge-blue' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'badge-amber' },
+  COMPLETED:   { label: 'Completed',   cls: 'badge-green' },
+};
 
 export default function Papers() {
-  const { papers, total, page, isLoading, error, fetchPapers, searchPapers, clearError } = usePapersStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const { papers, total, isLoading, error, fetchPapers, searchPapers, clearError } = usePapersStore();
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const pageSize = 10;
+  const totalPages = Math.ceil(total / pageSize);
 
-  useEffect(() => {
-    fetchPapers(currentPage, pageSize);
-  }, [currentPage, fetchPapers]);
+  useEffect(() => { fetchPapers(page, pageSize); }, [page]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setCurrentPage(1);
-      searchPapers(searchQuery, 1, pageSize);
-    } else {
-      fetchPapers(1, pageSize);
-      setCurrentPage(1);
-    }
+    setPage(1);
+    if (query.trim()) searchPapers(query, 1, pageSize);
+    else fetchPapers(1, pageSize);
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
+  const handleClear = () => {
+    setQuery('');
+    setPage(1);
     clearError();
     fetchPapers(1, pageSize);
-    setCurrentPage(1);
   };
 
-  const totalPages = Math.ceil(total / pageSize);
-
   return (
-    <div className="space-y-6 p-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">Assigned Papers</h1>
-        <p className="mt-1 text-gray-600">View and evaluate your assigned papers.</p>
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="page-title">Assigned Papers</h1>
+        <p className="page-subtitle">Evaluate student answer sheets assigned to you.</p>
       </div>
 
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="flex-1 flex items-center rounded-lg border border-gray-300 bg-white px-4">
-          <Search size={18} className="text-gray-400" />
+      {/* Search */}
+      <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+        <div className="flex-1 flex items-center gap-2.5 input px-3.5 py-0">
+          <Search size={15} className="text-gray-400 shrink-0" />
           <input
             type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by roll number or student name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full border-none bg-transparent py-2 pl-2 outline-none"
+            className="flex-1 py-2.5 outline-none text-sm bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400"
           />
+          {query && (
+            <button type="button" onClick={handleClear} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <X size={15} />
+            </button>
+          )}
         </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          Search
-        </button>
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={handleClearSearch}
-            className="rounded-lg bg-gray-300 px-6 py-2 font-medium text-gray-700 hover:bg-gray-400 transition-colors"
-          >
-            Clear
-          </button>
-        )}
+        <button type="submit" className="btn-primary px-5">Search</button>
       </form>
 
-      {/* Error Message */}
-      {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-red-700">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
-        </div>
-      )}
+      {error && <div className="alert-error mb-4">{error}</div>}
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader className="animate-spin text-blue-600" size={32} />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader className="animate-spin text-indigo-600" size={28} />
         </div>
-      )}
-
-      {/* Papers Table */}
-      {!isLoading && papers.length > 0 && (
+      ) : papers.length === 0 ? (
+        <div className="card flex flex-col items-center justify-center py-16 text-center">
+          <ClipboardList size={40} className="text-gray-300 dark:text-gray-700 mb-3" />
+          <p className="font-semibold text-gray-600 dark:text-gray-400">No papers found</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+            {query ? 'Try a different search.' : 'No papers assigned yet.'}
+          </p>
+        </div>
+      ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <div className="surface-raised rounded-2xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Roll Number</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Student Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Subject</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Action</th>
+                <tr className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
+                  {['Roll No.', 'Student', 'Subject', 'Status', 'Action'].map((h, i) => (
+                    <th
+                      key={h}
+                      className={`px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider ${i === 4 ? 'text-center' : 'text-left'}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
-                {papers.map((paper) => (
-                  <tr key={paper.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-700">{paper.rollNumber}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{paper.studentName}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{paper.subject}</td>
-                    <td className="px-6 py-4">
-                      <span className={`badge ${getStatusColor(paper.status)}`}>
-                        {getStatusText(paper.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <Link
-                        to={`/evaluation/${paper.id}`}
-                        className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                      >
-                        Evaluate
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {papers.map((p) => {
+                  const s = STATUS[p.status] || { label: p.status, cls: 'badge-blue' };
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                      <td className="px-5 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">{p.rollNumber}</td>
+                      <td className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{p.studentName}</td>
+                      <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-400">{p.subject}</td>
+                      <td className="px-5 py-4">
+                        <span className={s.cls}>{s.label}</span>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <Link to={`/evaluation/${p.id}`} className="btn-primary px-4 py-2 text-xs">
+                          Evaluate
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-              <p className="text-sm text-gray-600">
-                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, total)} of {total} papers
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total} papers
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="btn-secondary w-9 h-9 p-0"
                 >
-                  Previous
+                  <ChevronLeft size={16} />
                 </button>
-                <span className="flex items-center px-4 text-sm font-medium text-gray-700">
-                  Page {currentPage} of {totalPages}
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
+                  {page} / {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="btn-secondary w-9 h-9 p-0"
                 >
-                  Next
+                  <ChevronRight size={16} />
                 </button>
               </div>
             </div>
           )}
         </>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && papers.length === 0 && (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
-          <p className="text-lg text-gray-600">No papers found</p>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchQuery ? 'Try adjusting your search criteria.' : 'Check back later for assigned papers.'}
-          </p>
-        </div>
       )}
     </div>
   );

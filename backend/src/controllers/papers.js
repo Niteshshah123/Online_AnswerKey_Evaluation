@@ -27,10 +27,7 @@ export class PapersController {
   async getPaperDetails(req, res) {
     try {
       const { id } = req.params;
-      const paperId = parseInt(id);
-
-      const paper = await papersService.getPaperDetails(paperId);
-
+      const paper = await papersService.getPaperDetails(id);
       sendResponse(res, HTTP_STATUS.OK, paper, 'Paper details retrieved successfully');
     } catch (error) {
       if (error.statusCode) {
