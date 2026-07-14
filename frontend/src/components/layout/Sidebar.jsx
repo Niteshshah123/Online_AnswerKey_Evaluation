@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import {
   LayoutDashboard, FileText, KeyRound,
-  ShieldCheck, Users, Upload, UserCircle,
+  ShieldCheck, Users, Upload, UserCircle, GraduationCap,
 } from 'lucide-react';
 
 const NAV_BY_ROLE = {
@@ -15,6 +15,7 @@ const NAV_BY_ROLE = {
   admin: [
     { label: 'Dashboard',       path: '/admin/dashboard',      icon: ShieldCheck },
     { label: 'Upload Sheets',   path: '/admin/upload-sheets',  icon: Upload },
+    { label: 'Manage Students', path: '/admin/students',       icon: GraduationCap },
     { label: 'Manage Users',    path: '/admin/users',          icon: Users },
   ],
   student: [

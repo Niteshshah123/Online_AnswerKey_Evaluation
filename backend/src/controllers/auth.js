@@ -1,7 +1,11 @@
-import { AuthService } from '../services/index.js';
-import { sendResponse, sendErrorResponse } from '../utils/index.js';
-import { loginValidator } from '../validators/index.js';
-import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../constants/index.js';
+import { AuthService } from "../services/index.js";
+import { sendResponse, sendErrorResponse } from "../utils/index.js";
+import { loginValidator, registerValidator } from "../validators/index.js";
+import {
+  HTTP_STATUS,
+  SUCCESS_MESSAGES,
+  ERROR_MESSAGES,
+} from "../constants/index.js";
 
 const authService = new AuthService();
 
@@ -12,10 +16,15 @@ export class AuthController {
 
       if (error) {
         const errors = error.details.map((e) => ({
-          field: e.path.join('.'),
+          field: e.path.join("."),
           message: e.message,
         }));
-        return sendErrorResponse(res, HTTP_STATUS.BAD_REQUEST, ERROR_MESSAGES.VALIDATION_ERROR, errors);
+        return sendErrorResponse(
+          res,
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_MESSAGES.VALIDATION_ERROR,
+          errors,
+        );
       }
 
       const result = await authService.login(value.email, value.password);
@@ -25,7 +34,63 @@ export class AuthController {
       if (error.statusCode) {
         sendErrorResponse(res, error.statusCode, error.message);
       } else {
-        sendErrorResponse(res, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_MESSAGES.INTERNAL_SERVER_ERROR);
+        sendErrorResponse(
+          res,
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
+  }
+
+  async register(req, res) {
+    try {
+      const { error, value } = registerValidator(req.body);
+
+      if (error) {
+        const errors = error.details.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }));
+        return sendErrorResponse(
+          res,
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_MESSAGES.VALIDATION_ERROR,
+          errors,
+        );
+      }
+
+      const result = await authService.register(
+        value.email,
+        value.password,
+        value.displayName,
+        value.role,
+      );
+
+      sendResponse(
+        res,
+        HTTP_STATUS.CREATED,
+        result,
+        "Account created successfully",
+      );
+    } catch (error) {
+      console.error("Register failed:", error);
+      if (error.code === "auth/email-already-exists") {
+        return sendErrorResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "A user with this email already exists.",
+        );
+      }
+
+      if (error.statusCode) {
+        sendErrorResponse(res, error.statusCode, error.message);
+      } else {
+        sendErrorResponse(
+          res,
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+        );
       }
     }
   }
@@ -35,17 +100,25 @@ export class AuthController {
       const { refreshToken } = req.body;
 
       if (!refreshToken) {
-        return sendErrorResponse(res, HTTP_STATUS.BAD_REQUEST, 'Refresh token required');
+        return sendErrorResponse(
+          res,
+          HTTP_STATUS.BAD_REQUEST,
+          "Refresh token required",
+        );
       }
 
       const result = await authService.refreshToken(refreshToken);
 
-      sendResponse(res, HTTP_STATUS.OK, result, 'Token refreshed successfully');
+      sendResponse(res, HTTP_STATUS.OK, result, "Token refreshed successfully");
     } catch (error) {
       if (error.statusCode) {
         sendErrorResponse(res, error.statusCode, error.message);
       } else {
-        sendErrorResponse(res, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_MESSAGES.INTERNAL_SERVER_ERROR);
+        sendErrorResponse(
+          res,
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+        );
       }
     }
   }
@@ -54,7 +127,11 @@ export class AuthController {
     try {
       sendResponse(res, HTTP_STATUS.OK, {}, SUCCESS_MESSAGES.LOGOUT_SUCCESS);
     } catch (error) {
-      sendErrorResponse(res, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_MESSAGES.INTERNAL_SERVER_ERROR);
+      sendErrorResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

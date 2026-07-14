@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { ShieldCheck, Users, FileText, BarChart2, Upload } from 'lucide-react';
+import { ShieldCheck, Users, FileText, BarChart2, Upload, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const STAT_CARDS = [
@@ -48,6 +48,13 @@ export default function AdminDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Upload Answer Sheets</p>
               <p className="text-xs text-gray-400">Bulk upload student PDFs</p>
+            </div>
+          </Link>
+          <Link to="/admin/students" className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all group">
+            <GraduationCap size={18} className="text-indigo-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Manage Students</p>
+              <p className="text-xs text-gray-400">Add & organise student records</p>
             </div>
           </Link>
           <Link to="/admin/users" className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all group">

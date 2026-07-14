@@ -1,15 +1,26 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyDx9Frj3HAhsTf5FfqHlMIPDzcCRXkYIeU',
-  authDomain: 'evalpro-7e63f.firebaseapp.com',
-  projectId: 'evalpro-7e63f',
-  storageBucket: 'evalpro-7e63f.firebasestorage.app',
-  messagingSenderId: '100904567720',
-  appId: '1:100904567720:web:f4c9fe24cf8669cf2ed39d',
-  measurementId: 'G-SBRM1SRN2X',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+if (
+  !firebaseConfig.apiKey ||
+  !firebaseConfig.authDomain ||
+  !firebaseConfig.projectId ||
+  !firebaseConfig.appId
+) {
+  throw new Error(
+    "Missing Firebase client configuration. Set the VITE_FIREBASE_* environment variables.",
+  );
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

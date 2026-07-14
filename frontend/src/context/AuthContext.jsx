@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
-      const tokenResult = await cred.user.getIdTokenResult();
+      const tokenResult = await cred.user.getIdTokenResult(true); // force refresh to get latest custom claims
       const claimedRole = tokenResult.claims.role || 'teacher';
       setUser(cred.user);
       setRole(claimedRole);

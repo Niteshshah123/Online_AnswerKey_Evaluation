@@ -38,8 +38,11 @@ app.use(morgan('combined', {
   },
 }));
 
-// Static assets for seeded PDFs
-app.use('/pdfs', express.static(path.join(__dirname, '..', 'public', 'pdfs')));
+// Static assets — PDFs served with CORS so browser can load them directly
+app.use('/pdfs', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static(path.join(__dirname, '..', 'public', 'pdfs')));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Initialize Firebase Admin
